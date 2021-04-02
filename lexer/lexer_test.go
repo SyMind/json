@@ -9,6 +9,31 @@ func assertEqual(t *testing.T, a interface{}, b interface{}) {
 	}
 }
 
+func expectNumber(t *testing.T, contents string, expected float64) {
+	t.Helper()
+	l := NewLexer(contents)
+	assertEqual(t, l.Token, TNumber)
+	assertEqual(t, l.Number, expected)
+}
+
+func TestNumber(t *testing.T) {
+	expectNumber(t, "0", 0.0)
+	expectNumber(t, "123", 123.0)
+	expectNumber(t, "1289.345", 1289.345)
+}
+
+func expectString(t *testing.T, contents string, expected string) {
+	t.Helper()
+	l := NewLexer(contents)
+	assertEqual(t, l.Token, TString)
+	assertEqual(t, l.String, expected)
+}
+
+func TestString(t *testing.T) {
+	expectString(t, "\"\"", "")
+	expectString(t, "\"123\"", "123")
+}
+
 func TestTokens(t *testing.T) {
 	expected := []struct {
 		contents string
@@ -23,9 +48,9 @@ func TestTokens(t *testing.T) {
 		{"}", TRightCurlyBracket},
 
 		// Literal tokens
-		// {"true", TTrue},
-		// {"false", TFalse},
-		// {"null", TNull},
+		{"true", TTrue},
+		{"false", TFalse},
+		{"null", TNull},
 	}
 
 	for _, it := range expected {
