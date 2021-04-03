@@ -1,6 +1,7 @@
 package lexer
 
 import (
+	"fmt"
 	"strconv"
 	"unicode/utf8"
 )
@@ -32,6 +33,32 @@ var KeywordToString = map[Token]string{
 	TNull:  "null",
 }
 
+type Loc struct {
+	// This is the 0-based index of this location from the start of the file, in bytes
+	Start int32
+}
+
+type LexerPanic struct {
+	Msg string
+	Loc Loc
+}
+
+func IsWhitespace(codePoint rune) bool {
+	switch codePoint {
+	case
+		'\u0009', // character tabulation
+		'\u000B', // line tabulation
+		'\u000C', // form feed
+		'\u0020', // space
+		'\u00A0': // no-break space
+
+		return true
+
+	default:
+		return false
+	}
+}
+
 type Lexer struct {
 	source    string
 	current   int
@@ -41,42 +68,6 @@ type Lexer struct {
 	codePoint rune
 	Number    float64
 	String    string
-}
-
-type LexerPanic struct{}
-
-func IsWhitespace(codePoint rune) bool {
-	switch codePoint {
-	case
-		'\u0009', // character tabulation
-		'\u000B', // line tabulation
-		'\u000C', // form feed
-		'\u0020', // space
-		'\u00A0', // no-break space
-
-		// Unicode "Space_Separator" code points
-		'\u1680', // ogham space mark
-		'\u2000', // en quad
-		'\u2001', // em quad
-		'\u2002', // en space
-		'\u2003', // em space
-		'\u2004', // three-per-em space
-		'\u2005', // four-per-em space
-		'\u2006', // six-per-em space
-		'\u2007', // figure space
-		'\u2008', // punctuation space
-		'\u2009', // thin space
-		'\u200A', // hair space
-		'\u202F', // narrow no-break space
-		'\u205F', // medium mathematical space
-		'\u3000', // ideographic space
-
-		'\uFEFF': // zero width non-breaking space
-		return true
-
-	default:
-		return false
-	}
 }
 
 func (l *Lexer) Next() {
@@ -136,6 +127,8 @@ func (l *Lexer) Next() {
 				l.step()
 				continue
 			}
+
+			l.SyntaxError(fmt.Sprintf("Unexpected token %c", l.source[l.end]))
 		}
 
 		return
@@ -159,7 +152,7 @@ func (l *Lexer) parseNumber() {
 	first := l.codePoint
 	l.step()
 	if first == '0' && l.codePoint == '0' {
-		panic(LexerPanic{})
+		l.SyntaxError("Unexpected number")
 	}
 
 	// Initial digits
@@ -188,7 +181,7 @@ func (l *Lexer) parseNumber() {
 			l.step()
 		}
 		if l.codePoint < '0' || l.codePoint > '9' {
-			panic(LexerPanic{})
+			l.SyntaxError(fmt.Sprintf("Unexpected token %c", l.source[l.current]))
 		}
 		for {
 			if l.codePoint < '0' || l.codePoint > '9' {
@@ -210,7 +203,7 @@ func (l *Lexer) parseString() {
 			break
 		}
 		if l.codePoint == -1 {
-			panic("Unclosed string")
+			l.SyntaxError("Unexpected end of JSON input")
 		}
 	}
 
@@ -221,16 +214,26 @@ func (l *Lexer) parseString() {
 func (l *Lexer) parseKeyword(t Token) {
 	s := KeywordToString[t]
 	width := len(s)
-	text := l.source[l.current-1 : l.current+width-1]
 
-	if s != text {
-		panic("Unexpect token")
+	for i := 1; i < width; i++ {
+		c := l.source[l.current+i-1]
+		if c != s[i] {
+			l.SyntaxError(fmt.Sprintf("Unexpected token %c", c))
+		}
 	}
 
 	l.end = l.current + width - 1
 	l.current = l.end
 	l.Token = t
 	l.step()
+}
+
+func (l *Lexer) SyntaxError(msg string) {
+	loc := Loc{Start: int32(l.end)}
+	panic(LexerPanic{
+		Msg: msg,
+		Loc: loc,
+	})
 }
 
 func NewLexer(s string) Lexer {

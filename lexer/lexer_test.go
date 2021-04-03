@@ -64,3 +64,31 @@ func TestTokens(t *testing.T) {
 		})
 	}
 }
+
+func expectLexerError(t *testing.T, contents string, expected string) {
+	t.Helper()
+	t.Run(contents, func(t *testing.T) {
+		t.Helper()
+		text := ""
+		func() {
+			defer func() {
+				r := recover()
+				lexerPanic, isLexerPanic := r.(LexerPanic)
+				if r != nil && !isLexerPanic {
+					panic(r)
+				} else {
+					text = lexerPanic.Msg
+				}
+			}()
+			NewLexer(contents)
+		}()
+		assertEqual(t, text, expected)
+	})
+}
+
+func TestSyntaxError(t *testing.T) {
+	expectLexerError(t, "(", "Unexpected token (")
+	expectLexerError(t, "trae", "Unexpected token a")
+	expectLexerError(t, "faise", "Unexpected token i")
+	expectLexerError(t, "00", "Unexpected number")
+}
