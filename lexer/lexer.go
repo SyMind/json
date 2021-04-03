@@ -107,16 +107,29 @@ func (l *Lexer) Next() {
 			l.step()
 			l.Token = TRightCurlyBracket
 
+		case ',':
+			l.step()
+			l.Token = TComma
+
+		case ':':
+			l.step()
+			l.Token = TColon
+
 		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 			l.parseNumber()
+
 		case '"':
 			l.parseString()
+
 		case 't':
 			l.parseKeyword(TTrue)
+
 		case 'f':
 			l.parseKeyword(TFalse)
+
 		case 'n':
 			l.parseKeyword(TNull)
+
 		default:
 			// Check for insignificant whitespace characters
 			if IsWhitespace(l.codePoint) {
@@ -214,9 +227,10 @@ func (l *Lexer) parseKeyword(t Token) {
 		panic("Unexpect token")
 	}
 
-	l.end = l.current + width
-	l.current += width
+	l.end = l.current + width - 1
+	l.current = l.end
 	l.Token = t
+	l.step()
 }
 
 func NewLexer(s string) Lexer {

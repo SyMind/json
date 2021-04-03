@@ -46,6 +46,8 @@ func TestTokens(t *testing.T) {
 		{"]", TRightSquareBracket},
 		{"{", TLeftCurlyBracket},
 		{"}", TRightCurlyBracket},
+		{",", TComma},
+		{":", TColon},
 
 		// Literal tokens
 		{"true", TTrue},
